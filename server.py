@@ -2,8 +2,13 @@ from flask import Flask
 from pathlib import Path
 from flask import send_file, render_template_string, make_response, request
 import random
+import logging
 
-PICTURE_DIR = '.'  # 设定图片目录
+logger = logging.getLogger(__name__)
+
+PICTURE_DIR = 'J:/'  # 设定图片目录
+
+PICTURE_DIR = Path(PICTURE_DIR).resolve()
 
 app = Flask(__name__)
 
@@ -30,7 +35,6 @@ img{
 let div = document.getElementById('container');
 var img = new Image();
 img.onload = function() {
-    console.log(this.width, this.height, this.width > this.height, window.innerWidth);
   if (this.width > this.height){  // 横向图设宽度
       if(this.width >  window.innerWidth){
           div.style.width =  window.innerWidth + "px"  // 宽度超过窗口宽度
@@ -63,7 +67,6 @@ function nextRandomImg(){
 }
 
 function keyHandle(event){
-    console.log(event.code)
     if(event.code === "Space"){
         nextRandomImg()
     }else if (event.code === "ArrowLeft"){
@@ -80,18 +83,18 @@ document.addEventListener('keydown', keyHandle);
 </html>
 '''
 
+data = []
+total = 0
 def collect_pics():
+    logger.info(f'Searching {PICTURE_DIR}...')
     img_exts = ['jpg', 'png', 'gif']
-    data = []
     for ext in img_exts:
         imgs = list(Path(PICTURE_DIR).glob(f'**/*.{ext}'))
-        print(f'Found {len(imgs)} {ext} img ')
+        logger.info(f'Found {len(imgs)} {ext} img ')
         data.extend(imgs)
+    logger.info(f'Total image: {total}')
     return data   # 图片过多会占用较长时间启动，内存也会很大
 
-data = collect_pics()
-total = len(data)
-print(f'Total image: {total}')
 
 @app.route('/')
 def home():
@@ -108,4 +111,7 @@ def img(index):
     return send_file(filename, mimetype='image/gif')
 
 if __name__ == "__main__":
+    logging.basicConfig(level='INFO', format="%(asctime)s %(message)s")
+    data = collect_pics()
+    total = len(data)
     app.run(debug=True)
