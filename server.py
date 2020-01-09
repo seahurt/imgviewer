@@ -29,19 +29,22 @@ img{
 </style>
 </head>
 <body style="margin: 0px; background: #0e0e0e;">
-<div id="container" style="width: 500px; margin:auto">
+<div id="container" style="width: 500px; height: 700px; margin:auto; margin-top: 10px; margin-bottom: 10px;">
 </div>
 <script>
 let div = document.getElementById('container');
 var img = new Image();
+const maxWidth = window.innerWidth * 0.8
+const maxHeight = window.innerHeight - 20
 img.onload = function() {
-  if (this.width > this.height){  // 横向图设宽度
-      if(this.width >  window.innerWidth){
-          div.style.width =  window.innerWidth + "px"  // 宽度超过窗口宽度
-      }else{
-          div.style.width = this.width + "px"
-      }
-  }
+    let height = Math.min(maxHeight, this.height);
+    let width = this.width / (this.height / height);
+    if (width > maxWidth){
+        width = maxWidth
+        height = this.height / (this.width / width)
+    } 
+    div.style.width = width + "px";
+    div.style.height = height + "px";
   div.append(img);
 }
 img.src = '/img/{{imgindex}}';
