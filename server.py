@@ -3,12 +3,17 @@ from pathlib import Path
 from flask import send_file, render_template_string, make_response, request
 import random
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
 PICTURE_DIR = 'J:/'  # 设定图片目录
 
+
+
 PICTURE_DIR = Path(PICTURE_DIR).resolve()
+
+cache = PICTURE_DIR / ".imgviewer.db"
 
 app = Flask(__name__)
 
@@ -29,22 +34,23 @@ img{
 </style>
 </head>
 <body style="margin: 0px; background: #0e0e0e;">
-<div id="container" style="width: 500px; height: 700px; margin:auto; margin-top: 10px; margin-bottom: 10px;">
+<div id="container" style="width: 500px; height: 700px; margin:auto;">
 </div>
 <script>
 let div = document.getElementById('container');
 var img = new Image();
-const maxWidth = window.innerWidth * 0.8
-const maxHeight = window.innerHeight - 20
+const maxWidth = window.innerWidth
+const maxHeight = window.innerHeight - 5
 img.onload = function() {
     let height = Math.min(maxHeight, this.height);
     let width = this.width / (this.height / height);
     if (width > maxWidth){
-        width = maxWidth
+        width = maxWidth * 0.9
         height = this.height / (this.width / width)
     } 
     div.style.width = width + "px";
     div.style.height = height + "px";
+    div.style.marginTop = ((maxHeight - height) / 2) + "px"
   div.append(img);
 }
 img.src = '/img/{{imgindex}}';
@@ -87,21 +93,22 @@ document.addEventListener('keydown', keyHandle);
 '''
 
 data = []
-total = 0
 def collect_pics():
     logger.info(f'Searching {PICTURE_DIR}...')
     img_exts = ['jpg', 'png', 'gif']
     for ext in img_exts:
-        imgs = list(Path(PICTURE_DIR).glob(f'**/*.{ext}'))
+        imgs = list(map(str, Path(PICTURE_DIR).glob(f'**/*.{ext}')))
         logger.info(f'Found {len(imgs)} {ext} img ')
         data.extend(imgs)
-    logger.info(f'Total image: {total}')
+    logger.info(f'Total image: {len(data)}')
+    with cache.open('w') as f:
+        json.dump(data, f)
     return data   # 图片过多会占用较长时间启动，内存也会很大
 
 
 @app.route('/')
 def home():
-    index = request.args.get('index', random.randint(0, total))
+    index = request.args.get('index', random.randint(0, len(data)))
     response = make_response(render_template_string(templ, imgindex=int(index)))
     response.cache_control.no_cache = True
     return response, 200
@@ -115,6 +122,9 @@ def img(index):
 
 if __name__ == "__main__":
     logging.basicConfig(level='INFO', format="%(asctime)s %(message)s")
-    data = collect_pics()
-    total = len(data)
+    if cache.exists():
+        with cache.open() as f:
+            data = json.load(f)
+    else:
+        data = collect_pics()
     app.run(debug=True)
